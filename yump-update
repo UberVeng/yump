@@ -1,0 +1,26 @@
+#!/bin/bash
+# add update counter
+# yump-add script
+# yump-install script
+for playlist in $(ls -tr $HOME/.config/yump/channels); do
+  i=1
+  notify-send "Update for $playlist channel started" ""
+  db="$HOME/.config/yump/channels/$playlist"
+  x=""
+  latest=$(head -n 1 $db | awk '{print $1}')
+  while true; do
+    new=$(youtube-dl --get-id --playlist-items $i https://www.youtube.com/c/$playlist/videos)
+    if [[ $new == $latest ]]
+    then
+      echo "$playlist: $new == $latest. Write in $db"
+      x+=$(sed -z 's/\n/\\n/g;s/,$/\n/' $db)
+      echo -e `echo "$x"` > $db
+      break
+    fi
+    x+="$new 0\n"
+    echo "$playlist: $new != $latest. Write in $db"
+    i=$((++i))
+  done
+  sed -i '/^$/d' $db
+done
+notify-send "Update complete\!" ""

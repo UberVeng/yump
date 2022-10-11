@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ ! -z $2 ]
+then
+  echo "$2 0" > "$HOME/.config/yump/channels/$1"
+elif [ ! -z $1 ]
+then
+  touch "$HOME/.config/yump/channels/$1"
+fi

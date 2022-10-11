@@ -1,0 +1,32 @@
+#!/bin/bash
+# before start kill all hanging procces that will stay after yump-like
+if [ $(top -bn1 | grep "yump" | wc -l) -gt 0 ]
+then
+  killall "yump-like"
+fi
+
+cd $HOME/.config/yump
+id=$(cmus-remote --query | head -n 2 | tail -n 1 | sed 's/.*\(.\{11\}\).mp3/\1/')
+file=$(grep -H -m 1 -- "$id" channels/* | awk -F ":" '{print $1}')
+sed -i "s/$id \(0\|1\|-1\)/$id -1/g" $file
+name=$(cmus-remote --query | head -n 2 | tail -n 1 | sed "s|file ||g;s|-$id||g;s|$HOME/.config/yump/audio-tmp/||g")
+playlist=$(echo $file | awk -F "/" '{print $2}') 
+
+next=$(ls -tr1 "channels/" | head -n 1 | tail -n 1)
+count=$(ls -tr1 channels | wc -l)
+for (( i=1; i <=$count; i++ ))
+do
+  if [ $(grep " 0" "channels/$next" | wc -l) -gt 0 ]
+  then
+    break
+  fi
+  next=$(ls -tr1 "channels/" | head -n $i | tail -n 1)
+done
+
+if [ -e "$HOME/Music/$playlist/$name" ]
+then
+  rm "$HOME/Music/$playlist/$name"
+fi
+
+# notify-send "Song disliked!" "Next channel: $next"
+yump-get

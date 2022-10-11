@@ -1,0 +1,69 @@
+#!/bin/bash
+# before start kill all hanging procces that will stay after yump-like
+if [ $(top -bn1 | grep "yump" | wc -l) -gt 0 ]
+then
+  killall "yump-like"
+fi
+
+# pick next playlist which contains at least one not rated song
+cd $HOME/.config/yump
+playlist=$(ls -tr1 "channels/" | head -n 1)
+count=$(ls -tr1 channels | wc -l)
+for (( i=1; i <=$count; i++ ))
+do
+  if [ $(grep " 0" "channels/$playlist" | wc -l) -eq 0 ]
+  then
+    if [ $(ls -1 "channels/" | wc -l) -gt 1 ]
+    then
+      touch "channels/$playlist"
+      playlist=$(ls -tr1 "channels/" | head -n 1)
+    fi
+  else
+    break
+  fi
+done
+
+#  
+id=$(grep " 0" "channels/$playlist" | head -n 1 | awk '{print $1}')
+cd audio-tmp
+currentId=$(cmus-remote --query | head -n 2 | tail -n 1 | sed 's/.*\(.\{11\}\).mp3/\1/')
+if [ $(find ./ -name "*$currentId*" | wc -l) -gt 0 -a "$currentId" != $id ]
+then
+  rm "$(find ./ -name "*$currentId*")"
+fi
+
+if [ $(find ./ -name "*$id*" | wc -l) -eq 0 ]
+then
+  youtube-dl -x --audio-format mp3 --audio-quality 0 "https://www.youtube.com/watch?v=$id"
+fi
+if [ "$currentId" != $id ]
+then
+  songName=$(ls | grep -F -- "$id")
+  cmus-remote --file "$songName"
+  notify-send "$songName" "Channel: $playlist"
+else
+  #BUG if all playlists don't contain new songs, the message trigger.
+  songName=$(ls | grep -F -- "$id")
+  notify-send "$songName" "Channel: $playlist"
+fi
+
+#PRELOAD#
+cd $HOME/.config/yump
+count=$(ls -tr1 channels | wc -l)
+for (( i=2; i <=$count; i++ ))
+do
+  playlist=$(ls -tr1 "channels/" | head -n $i | tail -n 1)
+  if [ $(grep " 0" "channels/$playlist" | wc -l) -eq 0 ]
+  then
+    continue
+  fi
+  id=$(grep " 0" "channels/$playlist" | head -n 1 | awk '{print $1}')
+  cd audio-tmp
+  if [ $(find ./ -name "*$id*" | wc -l) -lt 1 ]
+  then
+    echo "do preload"
+    youtube-dl -x --audio-format mp3 --audio-quality 0 "https://www.youtube.com/watch?v=$id"
+  fi
+  exit 0
+done
+notify-send "No new songs in playlists" ""
